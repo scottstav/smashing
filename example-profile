@@ -1,0 +1,4 @@
+CLIENTID="an auth0 client id"
+CLIENTSECRET="the corresponding secret"
+AUDIENCE="the audience"
+ISSUER="login.my-domain.com"

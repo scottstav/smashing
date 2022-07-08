@@ -19,7 +19,7 @@ You can provide your credentials in a few ways
 Provide the file as a command line argument
 
 ```
-$ cat ~/basic-test.env
+$ cat /Users/scott.stavinoha/basic-test.env
 
 CLIENTSECRET="09876"
 CLIENTID="12345"
@@ -27,7 +27,7 @@ USERNAME=your@email.com
 PASSWORD=asdfasdf
 AUDIENCE=your-api
 
-$ smashing --profile="~/basic-test.env"
+$ smashing --profile="/Users/scott.stavinoha/basic-test.env"
 ```
 
 ### 2. Through command line arguments
