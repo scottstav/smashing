@@ -73,6 +73,7 @@ func main() {
 		}
 	}
 
+	color.Green("\nThanks, 1 sec...\n")
 	// generate a bearer token
 	GetBearerToken(inputsMap)
 
@@ -92,16 +93,23 @@ func GetBearerToken(inputsMap map[string]*string) {
 	reqBody.Set("realm", "Username-Password-Authentication")
 
 	resp, err := http.Post(fmt.Sprintf("https://%s%s", *inputsMap["issuer"], "/oauth/token"), "application/x-www-form-urlencoded", strings.NewReader(reqBody.Encode()))
-	if err != nil {
-		log.Fatalln(err)
-	}
-
-	defer resp.Body.Close()
 
 	b, err := io.ReadAll(resp.Body)
 	if err != nil {
 		log.Fatalln(err)
 	}
+
+	if resp.StatusCode != 200 {
+		color.Red(resp.Status)
+		color.Red(string(b))
+		os.Exit(1)
+	}
+
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	defer resp.Body.Close()
 
 	data := OAuthResponse{}
 
