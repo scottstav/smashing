@@ -1,4 +1,4 @@
-module scottstav/auth/smashing
+module github.com/scottstav/smashing
 
 go 1.18
 
