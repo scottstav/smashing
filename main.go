@@ -35,7 +35,7 @@ func main() {
 
 	// Load the profile if one was provided
 	profileName := flag.String("profile", "", "Profiles are structered like .env files.")
-	flag.Parse()
+	isInline := flag.Bool("inline", false, "This will inline the token without additional text. Good for inserting into commands.")
 	if len(*profileName) > 0 {
 		if err := godotenv.Load(*profileName); err != nil {
 			log.Printf("Error loading the .env file: %v", err)
@@ -52,16 +52,25 @@ func main() {
 	for i := 0; i < len(requiredInputs); i++ {
 		if len(*inputsMap[requiredInputs[i]]) > 0 {
 			// The value was provided on the command line
-			fmt.Printf(fmt.Sprintf("Reading %s argument from %s: %s...\n", color.BlueString(requiredInputs[i]), color.CyanString("command line"), color.GreenString((*inputsMap[requiredInputs[i]])[:3])))
+			if !*isInline {
+				fmt.Printf(fmt.Sprintf("Reading %s argument from %s: %s...\n", color.BlueString(requiredInputs[i]), color.CyanString("command line"), color.GreenString((*inputsMap[requiredInputs[i]])[:3])))
+			}
 		} else if profileInput := os.Getenv(strings.ToUpper(requiredInputs[i])); len(profileInput) > 0 {
 			// The input exists in the .env file
-			fmt.Printf(fmt.Sprintf("Reading %s argument from %s: %s...\n", color.BlueString(requiredInputs[i]), color.MagentaString(*profileName), color.GreenString(profileInput[:3])))
+			if !*isInline {
+				fmt.Printf(fmt.Sprintf("Reading %s argument from %s: %s...\n", color.BlueString(requiredInputs[i]), color.MagentaString(*profileName), color.GreenString(profileInput[:3])))
+			}
 			inputsMap[requiredInputs[i]] = &profileInput
 		}
 	}
 
 	for i := 0; i < len(requiredInputs); i++ {
 		if len(*(inputsMap[requiredInputs[i]])) <= 0 {
+
+			if *isInline {
+				log.Fatal("Cannot inline token, missing required parameters.")
+			}
+
 			// Whatever is not provided by .env or input args, should be provided now
 			fmt.Printf("Please enter a %s: ", color.YellowString(requiredInputs[i]))
 			reader := bufio.NewReader(os.Stdin)
