@@ -33,14 +33,24 @@ func main() {
 	// This will store all input arguments
 	inputsMap := make(map[string]*string)
 
-	// Load the profile if one was provided
+	// initialize the flags
 	profileName := flag.String("profile", "", "Profiles are structered like .env files.")
-	isInline := flag.Bool("inline", false, "This will inline the token without additional text. Good for inserting into commands.")
+	isM2m := flag.Bool("m2m", false, "Is this an m2m token? If so, username and password will be ignored.")
+
+	flag.Parse()
+
+	// Load the profile if one was provided
 	if len(*profileName) > 0 {
 		if err := godotenv.Load(*profileName); err != nil {
 			log.Printf("Error loading the .env file: %v", err)
 		}
 	}
+
+	// change required inputs for m2m
+	if *isM2m {
+		requiredInputs = []string{"clientId", "clientSecret", "audience", "issuer"}
+	}
+
 
 	// Initialize all the required flags
 	for i := 0; i < len(requiredInputs); i++ {
@@ -52,25 +62,14 @@ func main() {
 	for i := 0; i < len(requiredInputs); i++ {
 		if len(*inputsMap[requiredInputs[i]]) > 0 {
 			// The value was provided on the command line
-			if !*isInline {
-				fmt.Printf(fmt.Sprintf("Reading %s argument from %s: %s...\n", color.BlueString(requiredInputs[i]), color.CyanString("command line"), color.GreenString((*inputsMap[requiredInputs[i]])[:3])))
-			}
 		} else if profileInput := os.Getenv(strings.ToUpper(requiredInputs[i])); len(profileInput) > 0 {
 			// The input exists in the .env file
-			if !*isInline {
-				fmt.Printf(fmt.Sprintf("Reading %s argument from %s: %s...\n", color.BlueString(requiredInputs[i]), color.MagentaString(*profileName), color.GreenString(profileInput[:3])))
-			}
 			inputsMap[requiredInputs[i]] = &profileInput
 		}
 	}
 
 	for i := 0; i < len(requiredInputs); i++ {
 		if len(*(inputsMap[requiredInputs[i]])) <= 0 {
-
-			if *isInline {
-				log.Fatal("Cannot inline token, missing required parameters.")
-			}
-
 			// Whatever is not provided by .env or input args, should be provided now
 			fmt.Printf("Please enter a %s: ", color.YellowString(requiredInputs[i]))
 			reader := bufio.NewReader(os.Stdin)
@@ -82,15 +81,49 @@ func main() {
 		}
 	}
 
-	color.Green("\nThanks, 1 sec...\n")
 	// generate a bearer token
-	GetBearerToken(inputsMap)
+	if *isM2m {
+		getM2mToken(inputsMap)
 
-	// TODO: generate an m2m token
-
+	} else {
+		getBearerToken(inputsMap)
+	}
 }
 
-func GetBearerToken(inputsMap map[string]*string) {
+func getM2mToken(inputsMap map[string]*string) {
+	reqBody := url.Values{}
+	reqBody.Set("client_id", *inputsMap["clientId"])
+	reqBody.Set("client_secret", *inputsMap["clientSecret"])
+	reqBody.Set("audience", *inputsMap["audience"])
+	reqBody.Set("grant_type", "client_credentials")
+
+	resp, err := http.Post(fmt.Sprintf("https://%s%s", *inputsMap["issuer"], "/oauth/token"), "application/x-www-form-urlencoded", strings.NewReader(reqBody.Encode()))
+
+	b, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	if resp.StatusCode != 200 {
+		color.Red(resp.Status)
+		color.Red(string(b))
+		os.Exit(1)
+	}
+
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	defer resp.Body.Close()
+
+	data := OAuthResponse{}
+
+	json.Unmarshal(b, &data)
+
+	fmt.Printf("\n%s\n", color.YellowString(data.AccessToken))
+}
+
+func getBearerToken(inputsMap map[string]*string) {
 
 	reqBody := url.Values{}
 	reqBody.Set("username", *inputsMap["username"])
@@ -124,5 +157,5 @@ func GetBearerToken(inputsMap map[string]*string) {
 
 	json.Unmarshal(b, &data)
 
-	fmt.Printf("\nYour JWT is:\n\n%s\n\n", color.YellowString(data.AccessToken))
+	fmt.Printf("\n%s\n", color.YellowString(data.AccessToken))
 }
